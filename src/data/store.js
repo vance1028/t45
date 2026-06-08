@@ -827,7 +827,7 @@ async function getRosterRemainingSeats(rosterId) {
 
 /* ------------------------- 点名核销 ------------------------- */
 
-async function checkin(rosterStudentId, stationId, action, checkedBy) {
+async function checkin(rosterId, rosterStudentId, stationId, action, checkedBy) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -841,6 +841,22 @@ async function checkin(rosterStudentId, stationId, action, checkedBy) {
       throw err;
     }
     const rs = rsRows[0];
+
+    if (rs.roster_id !== rosterId) {
+      await conn.rollback();
+      const err = new Error('该学生记录不属于当前乘车名单');
+      err.code = 'RS_ROSTER_MISMATCH';
+      throw err;
+    }
+
+    const [stRows] = await conn.query(
+      'SELECT id FROM stations WHERE id = ? FOR UPDATE', [stationId]);
+    if (!stRows.length) {
+      await conn.rollback();
+      const err = new Error('站点不存在');
+      err.code = 'STATION_NOT_FOUND';
+      throw err;
+    }
 
     const [ckRows] = await conn.query(
       'SELECT id FROM checkins WHERE roster_student_id = ? AND action = ? FOR UPDATE',
@@ -913,7 +929,7 @@ async function getRosterStudentById(id) {
   return mapRosterStudent(rows[0]);
 }
 
-async function markMissedBoard(rosterStudentId) {
+async function markMissedBoard(rosterId, rosterStudentId) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -923,6 +939,12 @@ async function markMissedBoard(rosterStudentId) {
       await conn.rollback();
       const err = new Error('乘车名单记录不存在');
       err.code = 'RS_NOT_FOUND';
+      throw err;
+    }
+    if (rsRows[0].roster_id !== rosterId) {
+      await conn.rollback();
+      const err = new Error('该学生记录不属于当前乘车名单');
+      err.code = 'RS_ROSTER_MISMATCH';
       throw err;
     }
     if (rsRows[0].status !== 'EXPECTED') {
@@ -944,7 +966,7 @@ async function markMissedBoard(rosterStudentId) {
   }
 }
 
-async function markMissedAlight(rosterStudentId) {
+async function markMissedAlight(rosterId, rosterStudentId) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -954,6 +976,12 @@ async function markMissedAlight(rosterStudentId) {
       await conn.rollback();
       const err = new Error('乘车名单记录不存在');
       err.code = 'RS_NOT_FOUND';
+      throw err;
+    }
+    if (rsRows[0].roster_id !== rosterId) {
+      await conn.rollback();
+      const err = new Error('该学生记录不属于当前乘车名单');
+      err.code = 'RS_ROSTER_MISMATCH';
       throw err;
     }
     if (rsRows[0].status !== 'BOARDED') {

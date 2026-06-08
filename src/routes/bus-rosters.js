@@ -90,8 +90,11 @@ router.post('/:id/checkin', wrap(async (req, res) => {
   const stationId = toPositiveInt(b.stationId);
   if (stationId === null) return sendError(res, 400, '必须指定有效的站点 ID');
   if (!VALID_CHECKIN_ACTION.includes(b.action)) return sendError(res, 400, '核销动作只能是 BOARD / ALIGHT');
+  if (b.checkedBy !== undefined && typeof b.checkedBy !== 'string') {
+    return sendError(res, 400, '核销人必须是字符串');
+  }
   try {
-    const result = await store.checkin(rosterStudentId, stationId, b.action, b.checkedBy || '');
+    const result = await store.checkin(rosterId, rosterStudentId, stationId, b.action, b.checkedBy || '');
     const response = { data: result };
     if (result._stationMatch === false) {
       response.warning = '学生在非约定站点下车，已标记为错站';
@@ -100,6 +103,8 @@ router.post('/:id/checkin', wrap(async (req, res) => {
     res.status(201).json(response);
   } catch (err) {
     if (err.code === 'RS_NOT_FOUND') return sendError(res, 404, err.message);
+    if (err.code === 'RS_ROSTER_MISMATCH') return sendError(res, 400, err.message);
+    if (err.code === 'STATION_NOT_FOUND') return sendError(res, 400, err.message);
     if (err.code === 'DUPLICATE_CHECKIN') return sendError(res, 409, err.message);
     if (err.code === 'INVALID_STATE') return sendError(res, 400, err.message);
     if (err.code === 'STATION_MISMATCH') return sendError(res, 400, err.message);
@@ -115,10 +120,11 @@ router.post('/:id/missed-board', wrap(async (req, res) => {
   const rosterStudentId = toPositiveInt(b.rosterStudentId);
   if (rosterStudentId === null) return sendError(res, 400, '必须指定有效的名单学生记录 ID');
   try {
-    const result = await store.markMissedBoard(rosterStudentId);
+    const result = await store.markMissedBoard(rosterId, rosterStudentId);
     res.json({ data: result });
   } catch (err) {
     if (err.code === 'RS_NOT_FOUND') return sendError(res, 404, err.message);
+    if (err.code === 'RS_ROSTER_MISMATCH') return sendError(res, 400, err.message);
     if (err.code === 'INVALID_STATE') return sendError(res, 400, err.message);
     throw err;
   }
@@ -131,10 +137,11 @@ router.post('/:id/missed-alight', wrap(async (req, res) => {
   const rosterStudentId = toPositiveInt(b.rosterStudentId);
   if (rosterStudentId === null) return sendError(res, 400, '必须指定有效的名单学生记录 ID');
   try {
-    const result = await store.markMissedAlight(rosterStudentId);
+    const result = await store.markMissedAlight(rosterId, rosterStudentId);
     res.json({ data: result });
   } catch (err) {
     if (err.code === 'RS_NOT_FOUND') return sendError(res, 404, err.message);
+    if (err.code === 'RS_ROSTER_MISMATCH') return sendError(res, 400, err.message);
     if (err.code === 'INVALID_STATE') return sendError(res, 400, err.message);
     throw err;
   }
