@@ -8,6 +8,10 @@ const plansRouter = require('./routes/plans');
 const enrollmentsRouter = require('./routes/enrollments');
 const menusRouter = require('./routes/menus');
 const attendancesRouter = require('./routes/attendances');
+const busesRouter = require('./routes/buses');
+const stationsRouter = require('./routes/stations');
+const busRoutesRouter = require('./routes/bus-routes');
+const busRostersRouter = require('./routes/bus-rosters');
 const { sendError } = require('./utils/http');
 
 /**
@@ -31,6 +35,10 @@ function createApp() {
   app.use('/api/enrollments', enrollmentsRouter);
   app.use('/api/menus', menusRouter);
   app.use('/api/attendances', attendancesRouter);
+  app.use('/api/buses', busesRouter);
+  app.use('/api/stations', stationsRouter);
+  app.use('/api/bus-routes', busRoutesRouter);
+  app.use('/api/bus-rosters', busRostersRouter);
 
   app.use((req, res) => sendError(res, 404, '接口不存在'));
 
